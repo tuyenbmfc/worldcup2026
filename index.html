@@ -193,7 +193,7 @@ main{max-width:1400px;margin:0 auto;padding:16px 24px;}
     <div class="status-item"><span class="dot dot-ok"></span><span>Nguồn: <strong>football-data.org (có key)</strong></span></div>
     <div class="status-item" id="matchCountStatus">104 trận</div>
     <div class="status-item" style="color:var(--gold);font-size:11px;">📱 Điện thoại: Upload file lên <a href="https://tiiny.host" target="_blank" style="color:var(--cyan)">tiiny.host</a> hoặc GitHub Pages để dùng trực tuyến</div>
-    <div class="last-update">Cập nhật: <span id="lastUpdate">–</span> &nbsp;•&nbsp; auto mỗi 60s</div>
+    <div class="last-update">Cập nhật: <span id="lastUpdate">–</span> &nbsp;•&nbsp; auto sau <span id="countdown" style="color:var(--gold);font-weight:700">30s</span></div>
   </div>
   <div class="tz-legend">
     <span>🕐 Timezone các sân:</span>
@@ -257,7 +257,7 @@ main{max-width:1400px;margin:0 auto;padding:16px 24px;}
 // vn = giờ Việt Nam thực tế (đã tính đúng timezone từng sân)
 // tz = UTC offset của sân (để hiện giờ địa phương)
 const SCHEDULE = [
-  {n:1,s:'A',vn:'2026-06-12T02:00',day:'T6',h:'Mexico',a:'South Africa',v:'Estadio Azteca, Mexico City',tz:-6,score1:2,score2:0,status:'done',src:'manual'},
+  {n:1,s:'A',vn:'2026-06-12T02:00',day:'T6',h:'Mexico',a:'South Africa',v:'Estadio Azteca, Mexico City',tz:-6},
   {n:2,s:'A',vn:'2026-06-12T09:00',day:'T6',h:'South Korea',a:'Czechia',v:'Estadio Akron, Zapopan',tz:-6},
   {n:3,s:'B',vn:'2026-06-13T02:00',day:'T7',h:'Canada',a:'Bosnia & Herzegovina',v:'BMO Field, Toronto',tz:-4},
   {n:4,s:'D',vn:'2026-06-13T08:00',day:'T7',h:'USA',a:'Paraguay',v:'SoFi Stadium, Inglewood',tz:-7},
@@ -385,17 +385,38 @@ SCHEDULE.forEach(m => {
 const FD_TOKEN = '4f1dc73e7cd64224b9d5e9ab2da41d9a'; // football-data.org free key
 
 // Bảng alias tên đội (API dùng tên tiếng Anh khác với SCHEDULE)
+// Bảng chuẩn hoá tên đội: football-data.org dùng tên tiếng Anh đầy đủ
+// key = tên lowercase từ API, value = tên lowercase trong SCHEDULE
 const TEAM_ALIAS = {
+  // Hàn Quốc
   'korea republic':'south korea','republic of korea':'south korea',
-  'czech republic':'czechia',
-  'turkey':'türkiye',
+  // Séc
+  'czech republic':'czechia','czechia':'czechia',
+  // Thổ Nhĩ Kỳ
+  'turkey':'türkiye','türkiye':'türkiye',
+  // Bosnia
   'bosnia and herzegovina':'bosnia & herzegovina',
+  'bosnia & herzegovina':'bosnia & herzegovina',
+  // Bờ Biển Ngà
   "cote d'ivoire":'ivory coast',"côte d'ivoire":'ivory coast',
-  'democratic republic of congo':'dr congo','congo dr':'dr congo',
-  'cabo verde':'cape verde',
+  'ivory coast':'ivory coast',
+  // Congo
+  'democratic republic of congo':'dr congo',
+  'congo dr':'dr congo','dr congo':'dr congo',
+  // Cape Verde
+  'cabo verde':'cape verde','cape verde':'cape verde',
+  // Mỹ
   'united states':'usa','united states of america':'usa',
-  'curacao':'curaçao',
-  'aotearoa new zealand':'new zealand',
+  'usa':'usa',
+  // Curaçao
+  'curacao':'curaçao','curaçao':'curaçao',
+  // New Zealand
+  'aotearoa new zealand':'new zealand','new zealand':'new zealand',
+  // Mexico (đôi khi viết có dấu)
+  'méxico':'mexico',
+  // Saudi Arabia
+  'saudi arabia':'saudi arabia',
+  // Senegal, Iraq, Norway (giữ nguyên, chỉ để tránh alias sai)
 };
 
 function normName(s) {
@@ -415,7 +436,7 @@ async function fetchScores() {
   // ── Nguồn 1: football-data.org ──────────────────────────────────────────
   // Khi chạy trên GitHub Pages (https://) gọi thẳng được
   // Khi mở file:// dùng thêm corsproxy (nhưng proxy này forward header)
-  const FD_URL = 'https://api.football-data.org/v4/competitions/2000/matches';
+  const FD_URL = 'https://api.football-data.org/v4/competitions/WC/matches';
   const FD_HEADER = {'X-Auth-Token': FD_TOKEN};
 
   // Danh sách proxy hỗ trợ forward custom header
@@ -484,6 +505,16 @@ async function fetchScores() {
 // Trả về số trận được merge (có score)
 function mergeFootballData(apiMatches) {
   let count = 0;
+  // Log tên đội từ API để debug mapping
+  const finished = apiMatches.filter(am => ['IN_PLAY','PAUSED','FINISHED'].includes(am.status));
+  console.log('[FD] Trận có kết quả:', finished.length, '/', apiMatches.length);
+  finished.forEach(am => {
+    const ft = am.score?.fullTime;
+    const rawH = am.homeTeam?.name || '', rawA = am.awayTeam?.name || '';
+    console.log('[FD]', am.status, rawH, 'vs', rawA, '->', ft?.home, ':', ft?.away,
+                '| norm:', normName(rawH), 'vs', normName(rawA));
+  });
+
   apiMatches.forEach(am => {
     const status = am.status;
     if (!['IN_PLAY','PAUSED','FINISHED'].includes(status)) return;
@@ -492,14 +523,22 @@ function mergeFootballData(apiMatches) {
     const g1 = ft.home, g2 = ft.away;
     const t1 = normName(am.homeTeam?.name), t2 = normName(am.awayTeam?.name);
     const isLive = status === 'IN_PLAY' || status === 'PAUSED';
+    let matched = false;
     SCHEDULE.forEach(m => {
       if (m.src === 'manual') return;
-      if (normName(m.h) === t1 && normName(m.a) === t2) {
+      const mh = normName(m.h), ma = normName(m.a);
+      if (mh === t1 && ma === t2) {
         m.score1 = g1; m.score2 = g2;
         m.status = isLive ? 'live' : 'done';
-        m.src = 'api'; count++;
+        m.src = 'api'; count++; matched = true;
       }
     });
+    if (!matched) {
+      // Log tên nào trong SCHEDULE không khớp để fix alias
+      const possible = SCHEDULE.map(m => normName(m.h)+'/'+normName(m.a));
+      console.warn('[FD] Không khớp:', normName(am.homeTeam?.name), 'vs', normName(am.awayTeam?.name),
+                  '| Raw:', am.homeTeam?.name, 'vs', am.awayTeam?.name);
+    }
   });
   return count;
 }
@@ -760,10 +799,25 @@ function toast(type,title,msg){
 (async function(){
   renderTable(); renderStandings(); updateTime();
   await fetchScores();
-  // Auto-refresh mỗi 60s
-  setInterval(fetchScores, 60000);
-  // Cập nhật trạng thái live mỗi 30s
-  setInterval(()=>{renderTable();updateTime();}, 30000);
+
+  // Smart refresh: có trận LIVE → 15s, không live → 60s (tiết kiệm quota)
+  let countdown = 30;
+  const countEl = document.getElementById('countdown');
+
+  setInterval(() => {
+    countdown--;
+    const hasLive = SCHEDULE.some(m => m.status === 'live');
+    const target = hasLive ? 15 : 60;
+    if (countEl) {
+      countEl.textContent = countdown + 's';
+      countEl.style.color = hasLive ? 'var(--red)' : 'var(--gold)';
+    }
+    if (countdown <= 0) {
+      countdown = target;
+      fetchScores();
+    }
+    updateTime();
+  }, 1000);
 })();
 </script>
 </body>
