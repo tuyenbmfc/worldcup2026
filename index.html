@@ -166,6 +166,88 @@ main{max-width:1400px;margin:0 auto;padding:16px 24px;}
 .loading{text-align:center;padding:40px;color:var(--muted);font-size:13px;}
 .spinner{width:28px;height:28px;border:3px solid var(--border);border-top-color:var(--gold);border-radius:50%;animation:spin .8s linear infinite;margin:0 auto 10px;}
 .empty{text-align:center;padding:40px;color:var(--muted);}
+
+/* ═══ RESPONSIVE – MOBILE ═══════════════════════════════════════════════════ */
+@media (max-width:768px){
+  /* Header */
+  header{padding:0 12px;}
+  .header-inner{height:auto;padding:10px 0;gap:8px;flex-direction:column;align-items:flex-start;}
+  .logo-text{font-size:18px;}
+  .logo-sub{font-size:10px;}
+  .header-actions{width:100%;justify-content:space-between;}
+  .btn{padding:7px 12px;font-size:12px;}
+  #liveCount{font-size:11px;}
+
+  /* Status bar */
+  .status-bar{padding:8px 12px;}
+  .status-inner{gap:10px;font-size:11px;}
+  .last-update{margin-left:0;width:100%;}
+  .tz-legend{gap:8px;font-size:10px;}
+  .tz-badge{font-size:9px;padding:2px 5px;}
+
+  /* Main */
+  main{padding:10px 12px;}
+
+  /* Filters */
+  .filters{gap:6px;}
+  .chip{padding:4px 10px;font-size:11px;}
+  .search-box{margin-left:0;width:100%;}
+  .search-box input{width:100%;}
+  #groupFilter{font-size:11px;padding:4px 8px;}
+
+  /* ── Ẩn table header gốc trên mobile ── */
+  .table-header{display:none!important;}
+
+  /* ── Match row → card layout ── */
+  .match-row{
+    display:flex!important;
+    flex-direction:column;
+    gap:6px;
+    padding:12px;
+    border-bottom:1px solid rgba(28,53,82,.5);
+    border-left:none!important;
+    position:relative;
+  }
+  .match-row.live-row{border-left:3px solid var(--live)!important;}
+  .match-row.final-row{border-left:3px solid var(--gold)!important;}
+
+  /* Row top: số trận + ngày giờ + badge */
+  .mobile-row-top{
+    display:flex;align-items:center;gap:8px;
+  }
+  /* Score block */
+  .mobile-score-block{
+    display:flex;align-items:center;justify-content:center;gap:6px;
+    background:rgba(0,0,0,.25);border-radius:8px;padding:8px 12px;
+    margin:4px 0;
+  }
+  .mobile-team-home{flex:1;display:flex;align-items:center;justify-content:flex-end;gap:5px;font-size:13px;font-weight:600;text-align:right;}
+  .mobile-team-away{flex:1;display:flex;align-items:center;gap:5px;font-size:13px;font-weight:600;}
+  .mobile-score-nums{display:flex;align-items:center;gap:4px;}
+  /* Venue */
+  .mobile-venue{font-size:10px;color:var(--muted);text-align:center;}
+  .mobile-meta{display:flex;align-items:center;justify-content:center;gap:8px;font-size:10px;color:var(--muted);}
+
+  /* Score inputs on mobile – slightly larger touch targets */
+  .score-input{width:36px;height:32px;font-size:15px;}
+
+  /* Groups grid */
+  .groups-grid{grid-template-columns:1fr;}
+
+  /* Section title */
+  .section-title{font-size:18px;margin:20px 0 10px;}
+
+  /* Toast */
+  .toast-container{bottom:12px;right:12px;left:12px;}
+  .toast{max-width:100%;}
+
+  /* Stage separator */
+  .stage-sep{font-size:12px;padding:7px 12px;}
+}
+
+/* ═══ MOBILE JS CARD RENDERING FLAG ══════════════════════════════════════════
+   JS will detect window.innerWidth < 768 and render cards instead of grid rows.
+   The CSS above hides .table-header and re-styles .match-row on small screens. */
 </style>
 </head>
 <body>
@@ -646,34 +728,67 @@ function renderTable() {
       : `<span style="color:var(--muted);font-size:10px">–</span>`;
 
     const f1 = FLAG[m.h]||'🏳', f2 = FLAG[m.a]||'🏳';
-
-    html += `<div class="${rowCls}" style="animation-delay:${Math.min(idx*15,300)}ms">
-      <div class="cell-num">${m.n}</div>
-      <div class="cell-date-time">
-        <div class="cell-date">${dateStr}</div>
-        <div class="cell-time-vn">${timeStr}</div>
-      </div>
-      <div style="font-family:var(--font-m);font-size:10px;color:var(--muted);text-align:center;">${localStr}</div>
-      <div class="cell-stage">${stageName}</div>
-      <div class="cell-status">${badge}</div>
-      <div class="cell-team" style="justify-content:flex-end;padding-right:6px;">
-        <span style="font-size:13px;">${m.h}</span><span class="team-flag">${f1}</span>
-      </div>
-      <div class="cell-score">
-        <input type="number" min="0" max="30" class="${sCls}" id="s1_${m.n}" value="${sc1}"
-          onchange="manualScore(${m.n},1,this.value)" placeholder="–">
-      </div>
-      <div class="sep-dash">–</div>
-      <div class="cell-score">
-        <input type="number" min="0" max="30" class="${sCls}" id="s2_${m.n}" value="${sc2}"
-          onchange="manualScore(${m.n},2,this.value)" placeholder="–">
-      </div>
-      <div class="cell-team" style="padding-left:6px;">
-        <span class="team-flag">${f2}</span><span style="font-size:13px;">${m.a}</span>
-      </div>
-      <div class="cell-venue">${m.v}</div>
-      <div style="text-align:center;">${srcLbl}</div>
-    </div>`;
+    const isMobile = window.innerWidth < 768;
+    if (isMobile) {
+      html += `<div class="${rowCls}" style="animation-delay:${Math.min(idx*15,300)}ms">
+        <div class="mobile-row-top">
+          <span style="font-family:var(--font-m);font-size:10px;color:var(--muted);">#${m.n}</span>
+          <span style="font-family:var(--font-m);font-size:12px;color:var(--cyan);font-weight:700;">${timeStr}</span>
+          <span style="font-size:10px;color:var(--muted);">${dateStr}</span>
+          <span style="font-size:10px;color:var(--muted);">${localStr}</span>
+          <span style="margin-left:auto;">${badge}</span>
+        </div>
+        <div class="mobile-score-block">
+          <div class="mobile-team-home">
+            <span style="font-size:13px;">${m.h}</span>
+            <span style="font-size:18px;">${f1}</span>
+          </div>
+          <div class="mobile-score-nums">
+            <input type="number" min="0" max="30" class="${sCls}" id="s1_${m.n}" value="${sc1}"
+              onchange="manualScore(${m.n},1,this.value)" placeholder="–">
+            <span class="sep-dash" style="font-size:16px;">–</span>
+            <input type="number" min="0" max="30" class="${sCls}" id="s2_${m.n}" value="${sc2}"
+              onchange="manualScore(${m.n},2,this.value)" placeholder="–">
+          </div>
+          <div class="mobile-team-away">
+            <span style="font-size:18px;">${f2}</span>
+            <span style="font-size:13px;">${m.a}</span>
+          </div>
+        </div>
+        <div class="mobile-meta">
+          <span>📍 ${m.v}</span>
+          <span>${srcLbl}</span>
+        </div>
+      </div>`;
+    } else {
+      html += `<div class="${rowCls}" style="animation-delay:${Math.min(idx*15,300)}ms">
+        <div class="cell-num">${m.n}</div>
+        <div class="cell-date-time">
+          <div class="cell-date">${dateStr}</div>
+          <div class="cell-time-vn">${timeStr}</div>
+        </div>
+        <div style="font-family:var(--font-m);font-size:10px;color:var(--muted);text-align:center;">${localStr}</div>
+        <div class="cell-stage">${stageName}</div>
+        <div class="cell-status">${badge}</div>
+        <div class="cell-team" style="justify-content:flex-end;padding-right:6px;">
+          <span style="font-size:13px;">${m.h}</span><span class="team-flag">${f1}</span>
+        </div>
+        <div class="cell-score">
+          <input type="number" min="0" max="30" class="${sCls}" id="s1_${m.n}" value="${sc1}"
+            onchange="manualScore(${m.n},1,this.value)" placeholder="–">
+        </div>
+        <div class="sep-dash">–</div>
+        <div class="cell-score">
+          <input type="number" min="0" max="30" class="${sCls}" id="s2_${m.n}" value="${sc2}"
+            onchange="manualScore(${m.n},2,this.value)" placeholder="–">
+        </div>
+        <div class="cell-team" style="padding-left:6px;">
+          <span class="team-flag">${f2}</span><span style="font-size:13px;">${m.a}</span>
+        </div>
+        <div class="cell-venue">${m.v}</div>
+        <div style="text-align:center;">${srcLbl}</div>
+      </div>`;
+    }
   });
 
   // Live count
@@ -794,6 +909,13 @@ function toast(type,title,msg){
   document.getElementById('toastContainer').appendChild(el);
   setTimeout(()=>{el.style.opacity='0';el.style.transform='translateX(100%)';el.style.transition='all .3s';setTimeout(()=>el.remove(),300);},4000);
 }
+
+// ═══ RESPONSIVE RESIZE ═══════════════════════════════════════════════════════
+let _resizeTimer;
+window.addEventListener('resize', () => {
+  clearTimeout(_resizeTimer);
+  _resizeTimer = setTimeout(() => renderTable(), 200);
+});
 
 // ═══ INIT ════════════════════════════════════════════════════════════════════
 (async function(){
